@@ -1,11 +1,17 @@
-// Importa o pacote do Flutter - SEMPRE precisa disso para qualquer app Flutter
 import 'package:flutter/material.dart';
-// Importa o arquivo da tela de finanças que criamos
 import 'finance_screen.dart';
+import 'medicinal.dart';
+import 'gym.dart';
+import 'db_config.dart';
 
-// Função principal - ponto de entrada do app, igual ao Python
-void main() {
-  // Inicia o app Flutter, passando o widget principal (MyApp)
+void main() async {
+  // 1. Inicializar binding do Flutter
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 2. Inicializar Supabase
+  await SupabaseConfig.initialize();
+
+  // 3. Rodar o app
   runApp(const MyApp());
 }
 
@@ -80,7 +86,14 @@ class HomeScreen extends StatelessWidget {
               title: 'Saúde & Hospital',
               subtitle: 'Prontuários e consultas',
               color: const Color(0xFF10B981), // Cor verde
-              onTap: () {}, // Função vazia - não faz nada ao clicar
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MedicalScreen(),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 16),
             _buildModuleCard(
@@ -88,7 +101,12 @@ class HomeScreen extends StatelessWidget {
               title: 'Treinos & Relatórios',
               subtitle: 'Planos e progresso',
               color: const Color(0xFFF59E0B), // Cor laranja
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const GymScreen()),
+                );
+              },
             ),
             const SizedBox(height: 16),
             _buildModuleCard(

@@ -1,59 +1,167 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Classe para a tela de finanças - padrão igual ao HomeScreen
-class FinanceScreen extends StatelessWidget {
+class FinanceScreen extends StatefulWidget {
   const FinanceScreen({super.key});
 
   @override
+  State<FinanceScreen> createState() => _FinanceScreenState();
+}
+
+class _FinanceScreenState extends State<FinanceScreen> {
+  final TextEditingController _nomeController = TextEditingController();
+  final TextEditingController _valorController = TextEditingController();
+  String _selectType = 'A';
+  final List<String> _tipos = ['A', 'B'];
+
+  ////////////Trial
+  void _testarConexao() async {
+    try {
+      print('🔧 Testando conexão com Supabase...');
+      final response = await Supabase.instance.client
+          .from('financ_regis')
+          .select()
+          .limit(1);
+      print('✅ Conexão funcionando! Resposta: $response');
+    } catch (e) {
+      print('❌ Erro na conexão: $e');
+    }
+  }
+
+  void _salvarRegistro() async {
+    try {
+      // 1. Pegar dados dos campos
+      final nome = _nomeController.text;
+      final valor = double.tryParse(_valorController.text) ?? 0.0;
+      final tipo = _selectType;
+      final data = DateTime.now();
+
+      // 2. Validar dados
+      if (nome.isEmpty || valor == 0.0) {
+        print('Preencha todos os campos!');
+        return;
+      }
+
+      // 3. Inserir no Supabase (AGORA DE VERDADE!)
+      await Supabase.instance.client.from('financ_regis').insert({
+        'nome': nome,
+        'valor': valor,
+        'tipo': tipo,
+        'data_registro': data.toIso8601String(),
+      });
+
+      // 4. Limpar campos e mostrar sucesso
+      _nomeController.clear();
+      _valorController.clear();
+      setState(() {
+        _selectType = 'A';
+      });
+
+      print('✅ Registro salvo no SUPABASE com sucesso!');
+    } catch (e) {
+      print('❌ Erro ao salvar no Supabase: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // AppBar específica para tela de finanças
-      appBar: AppBar(
-        title: const Text('Finanças'), // Título diferente
-        backgroundColor: Colors.blue, // Pode ser uma cor diferente
-        foregroundColor: Colors.white, // Cor do texto e ícones da appbar
-      ),
-
-      body: Container(
-        color: Colors.grey[100], // Cor de fundo cinza claro para toda tela
-        child: Center(
-          // Centraliza o conteúdo horizontal e verticalmente
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment
-                .center, // Centraliza verticalmente DENTRO da Column
-            children: [
-              // Texto principal da tela
-              const Text(
-                'FINANCE',
-                style: TextStyle(
-                  fontSize: 40, // Texto grande
-                  fontWeight: FontWeight.bold, // Texto em negrito
-                  color: Colors.blue, // Cor azul
-                ),
-              ),
-
-              // Espaço grande entre o texto e o botão
-              const SizedBox(height: 50),
-
-              // Botão elevado (com sombra)
-              ElevatedButton(
-                onPressed: () {
-                  // Navigator.pop REMOVE a tela atual da pilha, voltando para a anterior
-                  Navigator.pop(context);
-                },
-                // Personalização do botão
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, // Cor de fundo do botão
-                  foregroundColor: Colors.white, // Cor do texto do botão
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 30, // Espaço interno horizontal
-                    vertical: 15, // Espaço interno vertical
-                  ),
-                ),
-                child: const Text('Voltar', style: TextStyle(fontSize: 18)),
-              ),
+    return DefaultTabController(
+      length: 3, // Número de abas
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Finance',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: const Color.fromARGB(255, 16, 151, 185),
+          foregroundColor: Colors.white,
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Inserir'),
+              Tab(text: 'Registros'),
+              Tab(text: 'Gráficos'),
             ],
           ),
+        ),
+        body: TabBarView(
+          children: [
+            // ABA 1 - INSERIR
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // Campo 1: Nome do Lançamento
+                  TextField(
+                    controller: _nomeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nome do Lançamento',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Campo 2: Valor
+                  TextField(
+                    controller: _valorController,
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Valor',
+                      border: OutlineInputBorder(),
+                      prefixText: 'R\$ ',
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Campo 3: Tipo do Lançamento (Dropdown)
+                  DropdownButtonFormField<String>(
+                    value: _selectType,
+                    items: _tipos.map((String tipo) {
+                      return DropdownMenuItem(
+                        value: tipo,
+                        child: Text('Tipo $tipo'),
+                      );
+                    }).toList(),
+                    onChanged: (String? novoValor) {
+                      setState(() {
+                        _selectType = novoValor!;
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Tipo do Lançamento',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Botão para salvar
+                  ElevatedButton(
+                    onPressed: _salvarRegistro,
+                    child: const Text('Salvar Registro'),
+                  ),
+
+                  ///////////Trial
+                  ElevatedButton(
+                    onPressed: _testarConexao,
+                    child: Text('Testar Conexão Supabase'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ABA 2 - REGISTROS
+            const Center(child: Text('Lista de Registros')),
+
+            // ABA 3 - GRÁFICOS
+            const Center(child: Text('Gráficos e Relatórios')),
+          ],
         ),
       ),
     );
