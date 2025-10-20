@@ -83,8 +83,8 @@ class HomeScreen extends StatelessWidget {
             // Outro card - mesmo padrão mas com onTap vazio por enquanto
             _buildModuleCard(
               icon: Icons.medical_services,
-              title: 'Saúde & Hospital',
-              subtitle: 'Prontuários e consultas',
+              title: 'Hábitos',
+              subtitle: 'Controle de hábitos',
               color: const Color(0xFF10B981), // Cor verde
               onTap: () {
                 Navigator.push(
