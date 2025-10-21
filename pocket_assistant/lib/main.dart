@@ -3,6 +3,7 @@ import 'finance_screen.dart';
 import 'medicinal.dart';
 import 'gym.dart';
 import 'db_config.dart';
+import 'habit.dart';
 
 void main() async {
   // 1. Inicializar binding do Flutter
@@ -89,9 +90,7 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const MedicalScreen(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const HabitScreen()),
                 );
               },
             ),

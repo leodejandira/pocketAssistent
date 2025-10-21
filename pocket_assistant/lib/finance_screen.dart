@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class FinanceScreen extends StatefulWidget {
   const FinanceScreen({super.key});
@@ -23,6 +24,10 @@ class _FinanceScreenState extends State<FinanceScreen> {
     true,
     false,
   ]; // [Débito, Crédito]
+
+  // Dados para o gráfico
+  List<GastoPorCategoria> _dadosGrafico = [];
+  bool _isLoadingGrafico = false;
 
   @override
   void initState() {
@@ -55,6 +60,63 @@ class _FinanceScreenState extends State<FinanceScreen> {
     } finally {
       setState(() {
         _isLoadingTipos = false;
+      });
+    }
+  }
+
+  // Função para carregar dados do gráfico (gastos do mês atual)
+  Future<void> _carregarDadosGrafico() async {
+    setState(() {
+      _isLoadingGrafico = true;
+    });
+
+    try {
+      // Obtém o primeiro e último dia do mês atual
+      final now = DateTime.now();
+      final primeiroDiaMes = DateTime(now.year, now.month, 1);
+      final ultimoDiaMes = DateTime(now.year, now.month + 1, 0);
+
+      // Busca os registros financeiros do mês atual (apenas débitos/gastos)
+      final response = await Supabase.instance.client
+          .from('financ_regis')
+          .select('valor, tipo_id, tipo(nome_tipo)')
+          .lt('valor', 0) // Apenas gastos (valores negativos)
+          .gte('data_registro', primeiroDiaMes.toIso8601String())
+          .lte('data_registro', ultimoDiaMes.toIso8601String());
+
+      // Agrupa os gastos por categoria
+      final Map<String, double> gastosPorCategoria = {};
+
+      for (final registro in response) {
+        final tipoNome = registro['tipo']['nome_tipo'] as String;
+        final valor = (registro['valor'] as num)
+            .toDouble()
+            .abs(); // Converte para positivo
+
+        gastosPorCategoria.update(
+          tipoNome,
+          (existing) => existing + valor,
+          ifAbsent: () => valor,
+        );
+      }
+
+      // Prepara os dados para o gráfico
+      final List<GastoPorCategoria> dadosGrafico = [];
+      gastosPorCategoria.forEach((categoria, total) {
+        dadosGrafico.add(GastoPorCategoria(categoria, total));
+      });
+
+      // Ordena por valor (maior para menor)
+      dadosGrafico.sort((a, b) => b.valor.compareTo(a.valor));
+
+      setState(() {
+        _dadosGrafico = dadosGrafico;
+      });
+    } catch (e) {
+      _showSnackBar('Erro ao carregar dados do gráfico: $e', isError: true);
+    } finally {
+      setState(() {
+        _isLoadingGrafico = false;
       });
     }
   }
@@ -194,7 +256,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             tabs: [
               Tab(text: 'Lançamentos'),
               Tab(text: 'Registros'),
-              Tab(text: 'Gráficos'),
+              Tab(text: 'Gráfico de gastos'),
             ],
           ),
         ),
@@ -299,11 +361,237 @@ class _FinanceScreenState extends State<FinanceScreen> {
               ),
             ),
             const Center(child: Text('Lista de Registros')),
-            const Center(child: Text('Gráficos e Relatórios')),
+            // ABA 3 - GRÁFICO DE GASTOS
+            _buildGraficoGastos(),
           ],
         ),
       ),
     );
+  }
+
+  // Widget para a aba do gráfico de gastos
+  Widget _buildGraficoGastos() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSectionTitle('Gastos do Mês Atual - ${_getMesAtual()}'),
+          const SizedBox(height: 16),
+
+          // Botão para atualizar o gráfico
+          ElevatedButton.icon(
+            onPressed: _carregarDadosGrafico,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Atualizar Gráfico'),
+          ),
+
+          const SizedBox(height: 24),
+
+          if (_isLoadingGrafico)
+            const Center(child: CircularProgressIndicator())
+          else if (_dadosGrafico.isEmpty)
+            const Center(
+              child: Text(
+                'Nenhum gasto encontrado para o mês atual',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+          else
+            Column(
+              children: [
+                // Gráfico de barras
+                SizedBox(
+                  height: 300,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: _getMaxY(),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          tooltipBgColor: Colors.blueGrey,
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            return BarTooltipItem(
+                              '${_dadosGrafico[groupIndex].categoria}\n',
+                              const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: 'R\$${rod.toY.toStringAsFixed(2)}',
+                                  style: const TextStyle(color: Colors.yellow),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              final index = value.toInt();
+                              if (index >= 0 && index < _dadosGrafico.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    _dadosGrafico[index].categoria,
+                                    style: const TextStyle(fontSize: 10),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                  ),
+                                );
+                              }
+                              return const Text('');
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              return Text(
+                                'R\$${value.toInt()}',
+                                style: const TextStyle(fontSize: 10),
+                              );
+                            },
+                            reservedSize: 40,
+                          ),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: _dadosGrafico.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final gasto = entry.value;
+                        return BarChartGroupData(
+                          x: index,
+                          barRods: [
+                            BarChartRodData(
+                              toY: gasto.valor,
+                              color: _getColorForIndex(index),
+                              width: 20,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Legenda dos gastos
+                ..._buildLegendaGastos(),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Função para obter o valor máximo do eixo Y
+  double _getMaxY() {
+    if (_dadosGrafico.isEmpty) return 100;
+    final maxValor = _dadosGrafico
+        .map((e) => e.valor)
+        .reduce((a, b) => a > b ? a : b);
+    return (maxValor * 1.2).ceilToDouble(); // Adiciona 20% de margem
+  }
+
+  // Função para obter o nome do mês atual
+  String _getMesAtual() {
+    final now = DateTime.now();
+    final meses = [
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
+    ];
+    return meses[now.month - 1];
+  }
+
+  // Widget para construir a legenda dos gastos
+  List<Widget> _buildLegendaGastos() {
+    return [
+      _buildSectionTitle('Resumo dos Gastos'),
+      const SizedBox(height: 16),
+      ..._dadosGrafico.asMap().entries.map((entry) {
+        final index = entry.key;
+        final gasto = entry.value;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: _getColorForIndex(index),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      gasto.categoria,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                  Text(
+                    'R\$${gasto.valor.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    ];
+  }
+
+  // Função auxiliar para obter cor baseada no índice
+  Color _getColorForIndex(int index) {
+    final colors = [
+      Colors.blue,
+      Colors.red,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.teal,
+      Colors.pink,
+      Colors.amber,
+      Colors.cyan,
+      Colors.deepOrange,
+    ];
+    return colors[index % colors.length];
   }
 
   // Widget auxiliar para os títulos das seções
@@ -367,4 +655,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
       },
     );
   }
+}
+
+// Classe para representar os dados do gráfico
+class GastoPorCategoria {
+  final String categoria;
+  final double valor;
+
+  GastoPorCategoria(this.categoria, this.valor);
 }
