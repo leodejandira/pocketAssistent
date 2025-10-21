@@ -15,6 +15,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
   final _valorController = TextEditingController();
   final _novaCategoriaController = TextEditingController();
 
+  // Controladores para compras a prazo
+  final _nomeCompraController = TextEditingController();
+  final _valorCompraController = TextEditingController();
+  final _parcelasController = TextEditingController();
+  DateTime? _dataPrimeiraParcela;
+
   // Variáveis de estado para os formulários
   int? _selectedTipoId;
   int? _selectedTipoParaDeletarId;
@@ -29,11 +35,18 @@ class _FinanceScreenState extends State<FinanceScreen> {
   List<GastoPorCategoria> _dadosGrafico = [];
   bool _isLoadingGrafico = false;
 
+  // Dados para compras a prazo
+  List<Map<String, dynamic>> _comprasPrazo = [];
+  List<Map<String, dynamic>> _parcelasPorMes = [];
+  bool _isLoadingCompras = false;
+
   @override
   void initState() {
     super.initState();
     // Carrega as categorias do banco de dados assim que a tela inicia
     _carregarTipos();
+    _carregarComprasPrazo();
+    _carregarParcelasPorMes();
   }
 
   @override
@@ -42,6 +55,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
     _nomeController.dispose();
     _valorController.dispose();
     _novaCategoriaController.dispose();
+    _nomeCompraController.dispose();
+    _valorCompraController.dispose();
+    _parcelasController.dispose();
     super.dispose();
   }
 
@@ -60,6 +76,194 @@ class _FinanceScreenState extends State<FinanceScreen> {
     } finally {
       setState(() {
         _isLoadingTipos = false;
+      });
+    }
+  }
+
+  // Função para carregar compras a prazo
+  Future<void> _carregarComprasPrazo() async {
+    setState(() {
+      _isLoadingCompras = true;
+    });
+    try {
+      final response = await Supabase.instance.client
+          .from('compras_prazo')
+          .select('''
+            *,
+            compras_prazo_parcelas(*)
+          ''')
+          .eq('ativo', true)
+          .order('data_criacao', ascending: false);
+
+      setState(() {
+        _comprasPrazo = List<Map<String, dynamic>>.from(response);
+      });
+    } catch (e) {
+      _showSnackBar('Erro ao carregar compras a prazo: $e', isError: true);
+    } finally {
+      setState(() {
+        _isLoadingCompras = false;
+      });
+    }
+  }
+
+  // Função para carregar parcelas agrupadas por mês
+  Future<void> _carregarParcelasPorMes() async {
+    try {
+      // Busca todas as parcelas não pagas das compras ativas
+      final response = await Supabase.instance.client
+          .from('compras_prazo_parcelas')
+          .select('''
+            valor_parcela,
+            data_vencimento,
+            pago,
+            compras_prazo!inner(nome, ativo)
+          ''')
+          .eq('pago', false)
+          .eq('compras_prazo.ativo', true)
+          .gte(
+            'data_vencimento',
+            DateTime.now().toIso8601String().split('T')[0],
+          )
+          .order('data_vencimento');
+
+      // Agrupa as parcelas por mês/ano
+      final Map<String, Map<String, dynamic>> parcelasAgrupadas = {};
+
+      for (final parcela in response) {
+        final dataVencimento = DateTime.parse(parcela['data_vencimento']);
+        final mesAno =
+            '${_getNomeMes(dataVencimento.month)}/${dataVencimento.year}';
+        final nomeCompra = parcela['compras_prazo']['nome'] as String;
+        final valorParcela = (parcela['valor_parcela'] as num).toDouble();
+
+        if (!parcelasAgrupadas.containsKey(mesAno)) {
+          parcelasAgrupadas[mesAno] = {
+            'mes_ano': mesAno,
+            'total': 0.0,
+            'compras': <String>{},
+            'data_ordenacao': dataVencimento,
+          };
+        }
+
+        parcelasAgrupadas[mesAno]!['total'] += valorParcela;
+        (parcelasAgrupadas[mesAno]!['compras'] as Set<String>).add(nomeCompra);
+      }
+
+      // Converte para lista e ordena por data
+      final listaParcelas = parcelasAgrupadas.values.toList();
+      listaParcelas.sort(
+        (a, b) => (a['data_ordenacao'] as DateTime).compareTo(
+          b['data_ordenacao'] as DateTime,
+        ),
+      );
+
+      // Limita a 6 meses
+      final parcelasLimitadas = listaParcelas.take(6).toList();
+
+      setState(() {
+        _parcelasPorMes = parcelasLimitadas
+            .map(
+              (mes) => {
+                'mes_ano': mes['mes_ano'],
+                'total': (mes['total'] as double),
+                'compras': (mes['compras'] as Set<String>).toList(),
+              },
+            )
+            .toList();
+      });
+    } catch (e) {
+      _showSnackBar('Erro ao carregar parcelas por mês: $e', isError: true);
+    }
+  }
+
+  // Função auxiliar para obter nome do mês
+  String _getNomeMes(int mes) {
+    final meses = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ];
+    return meses[mes - 1];
+  }
+
+  // Função para cadastrar nova compra a prazo
+  Future<void> _cadastrarCompraPrazo() async {
+    final nome = _nomeCompraController.text.trim();
+    final valorStr = _valorCompraController.text.replaceAll(',', '.');
+    final parcelasStr = _parcelasController.text;
+
+    if (nome.isEmpty ||
+        valorStr.isEmpty ||
+        parcelasStr.isEmpty ||
+        _dataPrimeiraParcela == null) {
+      _showSnackBar('Preencha todos os campos', isError: true);
+      return;
+    }
+
+    final valor = double.tryParse(valorStr);
+    final parcelas = int.tryParse(parcelasStr);
+
+    if (valor == null || valor <= 0 || parcelas == null || parcelas <= 0) {
+      _showSnackBar(
+        'Valor e parcelas devem ser números positivos',
+        isError: true,
+      );
+      return;
+    }
+
+    try {
+      // Chama a função do Supabase para inserir a compra e gerar parcelas
+      final response = await Supabase.instance.client.rpc(
+        'inserir_compra_prazo',
+        params: {
+          'p_nome': nome,
+          'p_valor_total': valor,
+          'p_parcelas_total': parcelas,
+          'p_data_primeira_parcela': _dataPrimeiraParcela!
+              .toIso8601String()
+              .split('T')[0],
+        },
+      );
+
+      _showSnackBar('Compra cadastrada com sucesso!');
+
+      // Limpa os campos
+      _nomeCompraController.clear();
+      _valorCompraController.clear();
+      _parcelasController.clear();
+      setState(() {
+        _dataPrimeiraParcela = null;
+      });
+
+      // Recarrega as listas
+      _carregarComprasPrazo();
+      _carregarParcelasPorMes();
+    } catch (e) {
+      _showSnackBar('Erro ao cadastrar compra: $e', isError: true);
+    }
+  }
+
+  // Função para selecionar data da primeira parcela
+  Future<void> _selecionarData() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _dataPrimeiraParcela ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(DateTime.now().year + 5),
+    );
+    if (picked != null && picked != _dataPrimeiraParcela) {
+      setState(() {
+        _dataPrimeiraParcela = picked;
       });
     }
   }
@@ -247,7 +451,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4, // Aumentei para 4 abas
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Finance'),
@@ -255,6 +459,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Lançamentos'),
+              Tab(text: 'Compras a Prazo'), // Nova aba
               Tab(text: 'Registros'),
               Tab(text: 'Gráfico de gastos'),
             ],
@@ -269,7 +474,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // --- Seção: Registrar Gasto ---
-                  _buildSectionTitle('Registrar Gasto'),
+                  _buildSectionTitle('Registrar Lançamento'),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _nomeController,
@@ -360,13 +565,205 @@ class _FinanceScreenState extends State<FinanceScreen> {
                 ],
               ),
             ),
+
+            // ABA 2 - COMPRAS A PRAZO
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // --- Seção: Cadastrar Compra a Prazo ---
+                  _buildSectionTitle('Cadastrar Compra a Prazo'),
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: _nomeCompraController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nome da Compra',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: _valorCompraController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Valor Total',
+                      prefixText: 'R\$ ',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: _parcelasController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Número de Parcelas',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Seleção de data
+                  InkWell(
+                    onTap: _selecionarData,
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Data da Primeira Parcela',
+                        border: OutlineInputBorder(),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _dataPrimeiraParcela != null
+                                ? _formatarDataCompleta(_dataPrimeiraParcela!)
+                                : 'Selecione a data',
+                          ),
+                          const Icon(Icons.calendar_today),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  ElevatedButton.icon(
+                    onPressed: _cadastrarCompraPrazo,
+                    icon: const Icon(Icons.add_shopping_cart),
+                    label: const Text('Cadastrar Compra'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+
+                  const Divider(height: 48, thickness: 1),
+
+                  // --- Seção: Parcelas por Mês ---
+                  _buildSectionTitle('Previsão de Parcelas (Próximos 6 Meses)'),
+                  const SizedBox(height: 16),
+
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _carregarParcelasPorMes();
+                      _carregarComprasPrazo();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Atualizar Previsão'),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  if (_parcelasPorMes.isEmpty)
+                    const Center(
+                      child: Text(
+                        'Nenhuma parcela futura encontrada',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  else
+                    ..._parcelasPorMes.map((mes) {
+                      final compras = (mes['compras'] as List<dynamic>)
+                          .cast<String>();
+                      final comprasTexto = compras.join(', ');
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    mes['mes_ano'],
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  Text(
+                                    'R\$${mes['total'].toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                comprasTexto,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+
+                  const SizedBox(height: 24),
+
+                  // --- Seção: Compras Ativas (Resumo) ---
+                  _buildSectionTitle('Compras Ativas'),
+                  const SizedBox(height: 16),
+
+                  if (_isLoadingCompras)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_comprasPrazo.isEmpty)
+                    const Center(
+                      child: Text(
+                        'Nenhuma compra a prazo cadastrada',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  else
+                    ..._comprasPrazo.map((compra) {
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text(compra['nome']),
+                          subtitle: Text(
+                            '${compra['parcelas_total']}x de R\$${(compra['valor_total'] / compra['parcelas_total']).toStringAsFixed(2)}',
+                          ),
+                          trailing: Text(
+                            'R\$${compra['valor_total']}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+
             const Center(child: Text('Lista de Registros')),
-            // ABA 3 - GRÁFICO DE GASTOS
+
+            // ABA 4 - GRÁFICO DE GASTOS
             _buildGraficoGastos(),
           ],
         ),
       ),
     );
+  }
+
+  // Função para formatar data completa
+  String _formatarDataCompleta(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   // Widget para a aba do gráfico de gastos
