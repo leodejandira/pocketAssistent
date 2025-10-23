@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'finance_screen.dart';
-import 'medicinal.dart';
 import 'gym.dart';
 import 'db_config.dart';
 import 'habit.dart';
+import 'medicinal_main.dart'; // Mudei para medicinal_main
 
 void main() async {
   // 1. Inicializar binding do Flutter
@@ -109,11 +109,19 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _buildModuleCard(
-              icon: Icons.settings,
-              title: 'Configurações',
-              subtitle: 'Preferências do app',
-              color: const Color(0xFF6B7280), // Cor cinza
-              onTap: () {},
+              icon: Icons.medical_services, // Ícone médico
+              title: 'Medicinal',
+              subtitle: 'Controle médico familiar',
+              color: const Color(0xFFEF4444), // Cor vermelha para saúde
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const MedicinalMainScreen(), // Agora usa MedicinalMainScreen
+                  ),
+                );
+              },
             ),
           ],
         ),
