@@ -3,7 +3,8 @@ import 'finance_screen.dart';
 import 'gym.dart';
 import 'db_config.dart';
 import 'habit.dart';
-import 'medicinal_main.dart'; // Mudei para medicinal_main
+import 'medicinal_main.dart';
+import 'list_screen.dart'; // Importe a nova tela de listas
 
 void main() async {
   // 1. Inicializar binding do Flutter
@@ -119,6 +120,21 @@ class HomeScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) =>
                         const MedicinalMainScreen(), // Agora usa MedicinalMainScreen
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildModuleCard(
+              icon: Icons.checklist, // Ícone de lista/checklist
+              title: 'Listas',
+              subtitle: 'Crie e gerencie listas de tarefas',
+              color: const Color(0xFF06B6D4), // Cor ciano/azul claro
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ListMainScreen(),
                   ),
                 );
               },

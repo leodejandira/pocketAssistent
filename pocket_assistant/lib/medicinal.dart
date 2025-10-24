@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MedicinalScreen extends StatefulWidget {
   const MedicinalScreen({super.key});
@@ -37,7 +38,7 @@ class _MedicinalScreenState extends State<MedicinalScreen> {
   }
 }
 
-// TELA 1: REGISTROS (antigo medicinal.dart)
+// TELA 1: REGISTROS
 class MedicinalRegistrosScreen extends StatefulWidget {
   const MedicinalRegistrosScreen({super.key});
 
@@ -177,26 +178,19 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
       final pacientesData = await Supabase.instance.client
           .from('paciente')
           .select('id, nome');
-      if (mounted) {
-        setState(() {
-          _pacientes = List<Map<String, dynamic>>.from(pacientesData);
-        });
-      }
 
       final statusExamesData = await Supabase.instance.client
           .from('exames_status')
           .select('id, nome');
-      if (mounted) {
-        setState(() {
-          _statusExames = List<Map<String, dynamic>>.from(statusExamesData);
-        });
-      }
 
       final statusLembretesData = await Supabase.instance.client
           .from('status')
           .select('id, nome');
+
       if (mounted) {
         setState(() {
+          _pacientes = List<Map<String, dynamic>>.from(pacientesData);
+          _statusExames = List<Map<String, dynamic>>.from(statusExamesData);
           _statusLembretes = List<Map<String, dynamic>>.from(
             statusLembretesData,
           );
@@ -217,7 +211,7 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       onDateSelected(picked);
     }
   }
@@ -485,25 +479,15 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
     }
   }
 
-  // Helper para mostrar SnackBars de feedback com tratamento de erro
   void _showSnackBar(String message, {bool isError = false}) {
-    try {
-      // Verifica se o widget ainda está montado e se o context é válido
-      if (mounted && context != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: isError ? Colors.redAccent : Colors.green,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        print('SnackBar não mostrado: $message');
-      }
-    } catch (e) {
-      // Fallback seguro se algo der errado
-      print('Erro ao mostrar SnackBar: $e - Mensagem: $message');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isError ? Colors.red : Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -531,9 +515,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               );
             }).toList(),
             onChanged: (int? newValue) {
-              setState(() {
-                _selectedPacienteLembrete = newValue;
-              });
+              if (mounted) {
+                setState(() {
+                  _selectedPacienteLembrete = newValue;
+                });
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -582,9 +568,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               Switch(
                 value: _isExame,
                 onChanged: (value) {
-                  setState(() {
-                    _isExame = value;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _isExame = value;
+                    });
+                  }
                 },
               ),
               const Text(
@@ -608,9 +596,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               );
             }).toList(),
             onChanged: (int? newValue) {
-              setState(() {
-                _selectedPacienteAgendamento = newValue;
-              });
+              if (mounted) {
+                setState(() {
+                  _selectedPacienteAgendamento = newValue;
+                });
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -660,9 +650,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
                 flex: 2,
                 child: InkWell(
                   onTap: () => _selectDate(context, (picked) {
-                    setState(() {
-                      _dataAgendamento = picked;
-                    });
+                    if (mounted) {
+                      setState(() {
+                        _dataAgendamento = picked;
+                      });
+                    }
                   }),
                   child: InputDecorator(
                     decoration: const InputDecoration(
@@ -699,9 +691,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
                     );
                   }).toList(),
                   onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedHorario = newValue;
-                    });
+                    if (mounted) {
+                      setState(() {
+                        _selectedHorario = newValue;
+                      });
+                    }
                   },
                 ),
               ),
@@ -737,9 +731,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               );
             }).toList(),
             onChanged: (int? newValue) {
-              setState(() {
-                _selectedPacienteResultado = newValue;
-              });
+              if (mounted) {
+                setState(() {
+                  _selectedPacienteResultado = newValue;
+                });
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -786,9 +782,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () => _selectDate(context, (picked) {
-                    setState(() {
-                      _dataExame = picked;
-                    });
+                    if (mounted) {
+                      setState(() {
+                        _dataExame = picked;
+                      });
+                    }
                   }),
                   child: InputDecorator(
                     decoration: const InputDecoration(
@@ -813,9 +811,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () => _selectDate(context, (picked) {
-                    setState(() {
-                      _dataResultado = picked;
-                    });
+                    if (mounted) {
+                      setState(() {
+                        _dataResultado = picked;
+                      });
+                    }
                   }),
                   child: InputDecorator(
                     decoration: const InputDecoration(
@@ -853,9 +853,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               );
             }).toList(),
             onChanged: (int? newValue) {
-              setState(() {
-                _selectedStatusResultado = newValue;
-              });
+              if (mounted) {
+                setState(() {
+                  _selectedStatusResultado = newValue;
+                });
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -907,9 +909,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               );
             }).toList(),
             onChanged: (int? newValue) {
-              setState(() {
-                _selectedPacienteMedicamento = newValue;
-              });
+              if (mounted) {
+                setState(() {
+                  _selectedPacienteMedicamento = newValue;
+                });
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -996,9 +1000,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               );
             }).toList(),
             onChanged: (int? newValue) {
-              setState(() {
-                _selectedPacienteCondicao = newValue;
-              });
+              if (mounted) {
+                setState(() {
+                  _selectedPacienteCondicao = newValue;
+                });
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -1029,9 +1035,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () => _selectDate(context, (picked) {
-                    setState(() {
-                      _dataDiagnosticoCondicao = picked;
-                    });
+                    if (mounted) {
+                      setState(() {
+                        _dataDiagnosticoCondicao = picked;
+                      });
+                    }
                   }),
                   child: InputDecorator(
                     decoration: const InputDecoration(
@@ -1067,9 +1075,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
                     );
                   }).toList(),
                   onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedGravidadeCondicao = newValue;
-                    });
+                    if (mounted) {
+                      setState(() {
+                        _selectedGravidadeCondicao = newValue;
+                      });
+                    }
                   },
                 ),
               ),
@@ -1116,9 +1126,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               );
             }).toList(),
             onChanged: (int? newValue) {
-              setState(() {
-                _selectedPacienteVacina = newValue;
-              });
+              if (mounted) {
+                setState(() {
+                  _selectedPacienteVacina = newValue;
+                });
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -1166,9 +1178,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () => _selectDate(context, (picked) {
-                    setState(() {
-                      _dataAplicacaoVacina = picked;
-                    });
+                    if (mounted) {
+                      setState(() {
+                        _dataAplicacaoVacina = picked;
+                      });
+                    }
                   }),
                   child: InputDecorator(
                     decoration: const InputDecoration(
@@ -1193,9 +1207,11 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () => _selectDate(context, (picked) {
-                    setState(() {
-                      _proximaDoseVacina = picked;
-                    });
+                    if (mounted) {
+                      setState(() {
+                        _proximaDoseVacina = picked;
+                      });
+                    }
                   }),
                   child: InputDecorator(
                     decoration: const InputDecoration(
@@ -1257,7 +1273,7 @@ class _MedicinalRegistrosScreenState extends State<MedicinalRegistrosScreen> {
   }
 }
 
-// TELA 2: CONTROLE DIÁRIO (antigo medicinal_geral.dart)
+// TELA 2: CONTROLE DIÁRIO
 class MedicinalGeralScreen extends StatefulWidget {
   const MedicinalGeralScreen({super.key});
 
@@ -1270,9 +1286,7 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
   List<Map<String, dynamic>> _examesAgendados = [];
   List<Map<String, dynamic>> _consultasAgendadas = [];
   List<Map<String, dynamic>> _lembretesExames = [];
-  List<Map<String, dynamic>> _medicamentos = [];
-  List<Map<String, dynamic>> _condicoesMedicas = [];
-  List<Map<String, dynamic>> _vacinas = [];
+  List<Map<String, dynamic>> _medicamentosAtivos = [];
 
   bool _isLoading = true;
   int? _selectedPacienteId;
@@ -1281,12 +1295,6 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
   void initState() {
     super.initState();
     _carregarDados();
-  }
-
-  @override
-  void dispose() {
-    // Limpeza segura para evitar chamadas após dispose
-    super.dispose();
   }
 
   Future<void> _carregarDados() async {
@@ -1302,94 +1310,122 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
         });
       }
     } catch (e) {
-      print('Erro ao carregar dados gerais: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        _showSnackBar('Erro ao carregar dados: $e', isError: true);
       }
+      _showSnackBar('Erro ao carregar dados: $e', isError: true);
     }
   }
 
   Future<void> _carregarDadosPaciente(int pacienteId) async {
+    if (!mounted) return;
+
     try {
-      final [
-        examesAgendadosData,
-        consultasData,
-        lembretesData,
-        medicamentosData,
-        condicoesData,
-        vacinasData,
-      ] = await Future.wait([
-        Supabase.instance.client
-            .from('exames_agendado')
-            .select('*')
-            .eq('paciente_id', pacienteId)
-            .order('data_agendado'),
-        Supabase.instance.client
-            .from('consultas')
-            .select('*')
-            .eq('paciente_id', pacienteId)
-            .order('data_consulta'),
-        Supabase.instance.client
-            .from('exames_lembrete')
-            .select('*, status(nome)')
-            .eq('paciente_id', pacienteId)
-            .order('data_registro', ascending: false),
-        Supabase.instance.client
-            .from('medicamentos')
-            .select('*')
-            .eq('paciente_id', pacienteId)
-            .order('data_registro', ascending: false),
-        Supabase.instance.client
-            .from('condicoes_medicas')
-            .select('*')
-            .eq('paciente_id', pacienteId)
-            .order('data_registro', ascending: false),
-        Supabase.instance.client
-            .from('vacinas')
-            .select('*')
-            .eq('paciente_id', pacienteId)
-            .order('data_registro', ascending: false),
-      ]);
+      final hoje = DateTime.now();
+      final dataLimite = hoje.add(const Duration(days: 30));
+
+      // Carregar exames agendados (próximos 30 dias)
+      final examesAgendados = await Supabase.instance.client
+          .from('exames_agendado')
+          .select('*')
+          .eq('paciente_id', pacienteId)
+          .gte('data_agendado', hoje.toIso8601String().split('T')[0])
+          .lte('data_agendado', dataLimite.toIso8601String().split('T')[0])
+          .order('data_agendado');
+
+      // Carregar consultas agendadas (próximos 30 dias)
+      final consultasAgendadas = await Supabase.instance.client
+          .from('consultas')
+          .select('*')
+          .eq('paciente_id', pacienteId)
+          .gte('data_consulta', hoje.toIso8601String().split('T')[0])
+          .lte('data_consulta', dataLimite.toIso8601String().split('T')[0])
+          .order('data_consulta');
+
+      // Carregar lembretes (apenas pendentes)
+      final lembretesExames = await Supabase.instance.client
+          .from('exames_lembrete')
+          .select('*, status(nome)')
+          .eq('paciente_id', pacienteId)
+          .eq('status_id', 1) // Assumindo que 1 é o id para pendente
+          .order('data_registro', ascending: false);
+
+      // Carregar todos os medicamentos do paciente
+      final todosMedicamentos = await Supabase.instance.client
+          .from('medicamentos')
+          .select('*')
+          .eq('paciente_id', pacienteId);
+
+      // Filtrar medicamentos ativos
+      final medicamentosAtivos = _filtrarMedicamentosAtivos(todosMedicamentos);
 
       if (mounted) {
         setState(() {
-          _examesAgendados = List<Map<String, dynamic>>.from(
-            examesAgendadosData,
+          _examesAgendados = List<Map<String, dynamic>>.from(examesAgendados);
+          _consultasAgendadas = List<Map<String, dynamic>>.from(
+            consultasAgendadas,
           );
-          _consultasAgendadas = List<Map<String, dynamic>>.from(consultasData);
-          _lembretesExames = List<Map<String, dynamic>>.from(lembretesData);
-          _medicamentos = List<Map<String, dynamic>>.from(medicamentosData);
-          _condicoesMedicas = List<Map<String, dynamic>>.from(condicoesData);
-          _vacinas = List<Map<String, dynamic>>.from(vacinasData);
+          _lembretesExames = List<Map<String, dynamic>>.from(lembretesExames);
+          _medicamentosAtivos = medicamentosAtivos;
         });
       }
     } catch (e) {
-      print('Erro ao carregar dados do paciente: $e');
+      _showSnackBar('Erro ao carregar dados do paciente: $e', isError: true);
+    }
+  }
+
+  List<Map<String, dynamic>> _filtrarMedicamentosAtivos(
+    List<dynamic> medicamentos,
+  ) {
+    final agora = DateTime.now();
+    return medicamentos
+        .where((medicamento) {
+          try {
+            final dataInicio = DateTime.parse(medicamento['data_inicio']);
+            final duracaoDias = medicamento['duracao_dias'] as int? ?? 0;
+            final dataFim = dataInicio.add(Duration(days: duracaoDias));
+            // Medicamento está ativo se a data atual é anterior ou igual à data final
+            return agora.isBefore(dataFim) || agora.isAtSameMomentAs(dataFim);
+          } catch (e) {
+            return false;
+          }
+        })
+        .toList()
+        .cast<Map<String, dynamic>>();
+  }
+
+  Future<void> _cancelarLembrete(int lembreteId) async {
+    try {
+      // Assumindo que o status 'cancelado' tem id 3
+      await Supabase.instance.client
+          .from('exames_lembrete')
+          .update({'status_id': 3})
+          .eq('id', lembreteId);
+
       if (mounted) {
-        _showSnackBar('Erro ao carregar dados do paciente: $e', isError: true);
+        setState(() {
+          _lembretesExames.removeWhere(
+            (lembrete) => lembrete['id'] == lembreteId,
+          );
+        });
+        _showSnackBar('Lembrete cancelado com sucesso!');
       }
+    } catch (e) {
+      _showSnackBar('Erro ao cancelar lembrete: $e', isError: true);
     }
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
-    try {
-      if (mounted && context != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: isError ? Colors.redAccent : Colors.green,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        print('SnackBar não mostrado: $message');
-      }
-    } catch (e) {
-      print('Erro ao mostrar SnackBar: $e - Mensagem: $message');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isError ? Colors.red : Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -1403,7 +1439,6 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Seletor de Paciente
                   _buildSectionTitle('Selecionar Paciente'),
                   const SizedBox(height: 16),
 
@@ -1420,11 +1455,9 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
                       );
                     }).toList(),
                     onChanged: (int? newValue) {
-                      if (mounted) {
-                        setState(() {
-                          _selectedPacienteId = newValue;
-                        });
-                      }
+                      setState(() {
+                        _selectedPacienteId = newValue;
+                      });
                       if (newValue != null) {
                         _carregarDadosPaciente(newValue);
                       }
@@ -1436,7 +1469,7 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
 
                     // Exames Agendados
                     if (_examesAgendados.isNotEmpty) ...[
-                      _buildSectionTitle('Exames Agendados'),
+                      _buildSectionTitle('Exames Agendados (Próximos 30 dias)'),
                       const SizedBox(height: 16),
                       ..._examesAgendados.map(
                         (exame) => _buildExameCard(exame),
@@ -1446,7 +1479,9 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
 
                     // Consultas Agendadas
                     if (_consultasAgendadas.isNotEmpty) ...[
-                      _buildSectionTitle('Consultas Agendadas'),
+                      _buildSectionTitle(
+                        'Consultas Agendadas (Próximos 30 dias)',
+                      ),
                       const SizedBox(height: 16),
                       ..._consultasAgendadas.map(
                         (consulta) => _buildConsultaCard(consulta),
@@ -1464,43 +1499,24 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
                       const SizedBox(height: 24),
                     ],
 
-                    // Medicamentos
-                    if (_medicamentos.isNotEmpty) ...[
-                      _buildSectionTitle('Medicamentos em Uso'),
+                    // Medicamentos Ativos
+                    if (_medicamentosAtivos.isNotEmpty) ...[
+                      _buildSectionTitle('Medicamentos Ativos'),
                       const SizedBox(height: 16),
-                      ..._medicamentos.map(
+                      ..._medicamentosAtivos.map(
                         (medicamento) => _buildMedicamentoCard(medicamento),
                       ),
                       const SizedBox(height: 24),
                     ],
 
-                    // Condições Médicas
-                    if (_condicoesMedicas.isNotEmpty) ...[
-                      _buildSectionTitle('Condições Médicas'),
-                      const SizedBox(height: 16),
-                      ..._condicoesMedicas.map(
-                        (condicao) => _buildCondicaoCard(condicao),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // Vacinas
-                    if (_vacinas.isNotEmpty) ...[
-                      _buildSectionTitle('Vacinas'),
-                      const SizedBox(height: 16),
-                      ..._vacinas.map((vacina) => _buildVacinaCard(vacina)),
-                    ],
-
                     if (_examesAgendados.isEmpty &&
                         _consultasAgendadas.isEmpty &&
                         _lembretesExames.isEmpty &&
-                        _medicamentos.isEmpty &&
-                        _condicoesMedicas.isEmpty &&
-                        _vacinas.isEmpty) ...[
+                        _medicamentosAtivos.isEmpty) ...[
                       const SizedBox(height: 32),
                       const Center(
                         child: Text(
-                          'Nenhum dado encontrado para este paciente',
+                          'Nenhum agendamento, lembrete ou medicamento ativo encontrado',
                           style: TextStyle(fontSize: 16, color: Colors.grey),
                         ),
                       ),
@@ -1615,12 +1631,6 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
   }
 
   Widget _buildLembreteCard(Map<String, dynamic> lembrete) {
-    final status = lembrete['status']?['nome'] ?? 'pendente';
-    Color statusColor = Colors.orange;
-
-    if (status == 'agendado') statusColor = Colors.blue;
-    if (status == 'realizado') statusColor = Colors.green;
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -1640,24 +1650,9 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: statusColor),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
-                    ),
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.cancel, color: Colors.red),
+                  onPressed: () => _cancelarLembrete(lembrete['id']),
                 ),
               ],
             ),
@@ -1709,123 +1704,18 @@ class _MedicinalGeralScreenState extends State<MedicinalGeralScreen> {
     );
   }
 
-  Widget _buildCondicaoCard(Map<String, dynamic> condicao) {
-    Color gravidadeColor = Colors.green;
-    switch (condicao['gravidade']) {
-      case 'Moderada':
-        gravidadeColor = Colors.orange;
-        break;
-      case 'Grave':
-        gravidadeColor = Colors.red;
-        break;
-      case 'Crítica':
-        gravidadeColor = Colors.purple;
-        break;
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    condicao['tipo'] ?? 'Condição',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                if (condicao['gravidade'] != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: gravidadeColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: gravidadeColor),
-                    ),
-                    child: Text(
-                      condicao['gravidade'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: gravidadeColor,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (condicao['descricao'] != null)
-              Text('Descrição: ${condicao['descricao']}'),
-            if (condicao['diagnostico_data'] != null)
-              Text('Diagnóstico: ${_formatDate(condicao['diagnostico_data'])}'),
-            if (condicao['observacoes'] != null)
-              Text('Observações: ${condicao['observacoes']}'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVacinaCard(Map<String, dynamic> vacina) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    vacina['nome_vacina'] ?? 'Vacina',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.vaccines, color: Colors.green),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (vacina['dose'] != null) Text('Dose: ${vacina['dose']}'),
-            if (vacina['local_aplicacao'] != null)
-              Text('Local: ${vacina['local_aplicacao']}'),
-            if (vacina['lote'] != null) Text('Lote: ${vacina['lote']}'),
-            Text('Aplicação: ${_formatDate(vacina['data_aplicacao'])}'),
-            if (vacina['proxima_dose'] != null)
-              Text('Próxima dose: ${_formatDate(vacina['proxima_dose'])}'),
-          ],
-        ),
-      ),
-    );
-  }
-
   String _formatDate(String? dateString) {
     if (dateString == null) return 'Data não informada';
     try {
       final date = DateTime.parse(dateString);
-      return '${date.day}/${date.month}/${date.year}';
+      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
     } catch (e) {
       return dateString;
     }
   }
 }
 
-// TELA 3: PERFIL DO PACIENTE (antigo medicinal_perfil.dart)
+// TELA 3: PERFIL DO PACIENTE
 class MedicinalPerfilScreen extends StatefulWidget {
   const MedicinalPerfilScreen({super.key});
 
@@ -1862,24 +1752,18 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
         });
       }
     } catch (e) {
-      print('Erro ao carregar dados do perfil: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        _showSnackBar('Erro ao carregar dados: $e', isError: true);
       }
+      _showSnackBar('Erro ao carregar dados: $e', isError: true);
     }
   }
 
   Future<void> _carregarDadosPaciente(int pacienteId) async {
     try {
-      final [
-        resultadosData,
-        condicoesData,
-        medicamentosData,
-        vacinasData,
-      ] = await Future.wait([
+      final results = await Future.wait([
         Supabase.instance.client
             .from('resultado_exames')
             .select('*, exames_status(nome)')
@@ -1904,17 +1788,14 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
 
       if (mounted) {
         setState(() {
-          _resultadosExames = List<Map<String, dynamic>>.from(resultadosData);
-          _condicoesMedicas = List<Map<String, dynamic>>.from(condicoesData);
-          _medicamentos = List<Map<String, dynamic>>.from(medicamentosData);
-          _vacinas = List<Map<String, dynamic>>.from(vacinasData);
+          _resultadosExames = List<Map<String, dynamic>>.from(results[0]);
+          _condicoesMedicas = List<Map<String, dynamic>>.from(results[1]);
+          _medicamentos = List<Map<String, dynamic>>.from(results[2]);
+          _vacinas = List<Map<String, dynamic>>.from(results[3]);
         });
       }
     } catch (e) {
-      print('Erro ao carregar dados completos do paciente: $e');
-      if (mounted) {
-        _showSnackBar('Erro ao carregar dados completos: $e', isError: true);
-      }
+      _showSnackBar('Erro ao carregar dados completos: $e', isError: true);
     }
   }
 
@@ -2004,22 +1885,27 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
     );
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
+  Future<void> _abrirLink(String url) async {
     try {
-      if (mounted && context != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: isError ? Colors.redAccent : Colors.green,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url));
       } else {
-        print('SnackBar não mostrado: $message');
+        _showSnackBar('Não foi possível abrir o link', isError: true);
       }
     } catch (e) {
-      print('Erro ao mostrar SnackBar: $e - Mensagem: $message');
+      _showSnackBar('Erro ao abrir link: $e', isError: true);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isError ? Colors.red : Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -2033,7 +1919,6 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Seletor de Paciente
                   _buildSectionTitle('Selecionar Paciente'),
                   const SizedBox(height: 16),
 
@@ -2155,7 +2040,6 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
   Widget _buildResultadoExameCard(Map<String, dynamic> exame) {
     final status = exame['exames_status']?['nome'] ?? 'desconhecido';
     Color statusColor = Colors.grey;
-
     if (status == 'normal') statusColor = Colors.green;
     if (status == 'alterado') statusColor = Colors.orange;
     if (status == 'critico') statusColor = Colors.red;
@@ -2175,12 +2059,24 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    exame['nome_exame'] ?? 'Exame',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.assignment,
+                        color: Colors.blue,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          exame['nome_exame'] ?? 'Exame',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Row(
@@ -2206,7 +2102,11 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(
+                        Icons.delete,
+                        color: Colors.red,
+                        size: 20,
+                      ),
                       onPressed: () => _showDeleteDialog(
                         'exame',
                         exame['nome_exame'] ?? 'Exame',
@@ -2233,9 +2133,7 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
             if (hasLink) ...[
               const SizedBox(height: 8),
               InkWell(
-                onTap: () {
-                  _abrirLink(exame['link_laudo_drive']);
-                },
+                onTap: () => _abrirLink(exame['link_laudo_drive']),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -2283,12 +2181,20 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    condicao['tipo'] ?? 'Condição',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning, color: Colors.orange, size: 24),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          condicao['tipo'] ?? 'Condição',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Row(
@@ -2315,7 +2221,11 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
                       ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(
+                        Icons.delete,
+                        color: Colors.red,
+                        size: 20,
+                      ),
                       onPressed: () => _showDeleteDialog(
                         'condicao',
                         condicao['tipo'] ?? 'Condição',
@@ -2351,16 +2261,24 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    medicamento['nome_medicamento'] ?? 'Medicamento',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.medication, color: Colors.red, size: 24),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          medicamento['nome_medicamento'] ?? 'Medicamento',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                   onPressed: () => _showDeleteDialog(
                     'medicamento',
                     medicamento['nome_medicamento'] ?? 'Medicamento',
@@ -2394,6 +2312,8 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
           children: [
             Row(
               children: [
+                const Icon(Icons.vaccines, color: Colors.green, size: 24),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     vacina['nome_vacina'] ?? 'Vacina',
@@ -2423,23 +2343,9 @@ class _MedicinalPerfilScreenState extends State<MedicinalPerfilScreen> {
     if (dateString == null) return 'Data não informada';
     try {
       final date = DateTime.parse(dateString);
-      return '${date.day}/${date.month}/${date.year}';
+      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
     } catch (e) {
       return dateString;
-    }
-  }
-
-  void _abrirLink(String url) {
-    try {
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        // Usar url_launcher em uma aplicação real
-        // launchUrl(Uri.parse(url));
-        _showSnackBar('Abrindo link: $url');
-      } else {
-        _showSnackBar('Link inválido', isError: true);
-      }
-    } catch (e) {
-      _showSnackBar('Erro ao abrir link: $e', isError: true);
     }
   }
 }
